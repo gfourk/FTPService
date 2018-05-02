@@ -10,6 +10,7 @@ import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
+import java.nio.file.Paths;
 
 import utils.BinaryTransfer;
 
@@ -18,7 +19,7 @@ public class FTPServer {
 
 	public static void main(String[] args) throws Exception  {
 		
-		System.out.println("Server up and running");
+		System.out.println("Server up and running ");
 
 		ServerSocket serverConnection = new ServerSocket(21000);
 
@@ -36,10 +37,10 @@ class FTPConnection extends Thread {
 	private String username = null;
 
 	// directory of where all the user directories are
-	private String startDirectory = "D:\\code\\Java\\FTPService\\bin\\server";
+	private String startDirectory = Paths.get("").toAbsolutePath().toString();
 
 	// the directory where the user currently is, user can only see in his directory
-	private String currentDirectory = "\\";
+	private String currentDirectory = "\\bin\\server\\";
 
 	private ServerSocket serverConnection;
 
