@@ -1,4 +1,3 @@
-
 package server;
 
 import java.io.BufferedReader;
@@ -11,14 +10,16 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.nio.file.Paths;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import utils.BinaryTransfer;
 
 
-public class FTPServer {
+public class FTPServer { // NO_UCD (unused code)
 
-	public static void main(String[] args) throws Exception  {
-		
+	public static void main(String[] args) throws Exception {
+
 		System.out.println("Server up and running ");
 
 		ServerSocket serverConnection = new ServerSocket(21000);
@@ -27,20 +28,35 @@ public class FTPServer {
 		// when a user is logged in another FTPConnection is created
 		new FTPConnection(serverConnection);
 	}
-	
+
 }
 
 
 class FTPConnection extends Thread {
 
-	// which  user created this FTPConnection
+	private static final Logger logger = getLogger();
+
+	static Logger getLogger() {
+		Logger newlog = Logger.getLogger(FTPConnection.class.getName());
+		/*
+		 * // if you want to log exceptions in files uncomment this FileHandler fh; try
+		 * { String path = Paths.get("").toAbsolutePath().toString() + File.separator +
+		 * "bin" + File.separator; fh = new
+		 * FileHandler(path+FTPConnection.class.getName()); newlog.addHandler(fh); }
+		 * catch (SecurityException e) { newlog.log(Level.SEVERE, e.getMessage(), e); }
+		 * catch (IOException e) { newlog.log(Level.SEVERE, e.getMessage(), e); }
+		 */
+		return newlog;
+	}
+
+	// which user created this FTPConnection
 	private String username = null;
 
 	// directory of where all the user directories are
 	private String startDirectory = Paths.get("").toAbsolutePath().toString();
 
 	// the directory where the user currently is, user can only see in his directory
-	private String currentDirectory = "\\bin\\server\\";
+	private String currentDirectory = File.separator + "bin" + File.separator + "server" + File.separator;
 
 	private ServerSocket serverConnection;
 
@@ -50,32 +66,33 @@ class FTPConnection extends Thread {
 	}
 
 	@Override
-	public void run()   {
-		
+	public void run() {
+
 		Socket connection = null;
 		BufferedReader inputFromClient = null;
 		DataOutputStream outputToClient = null;
 		String response = null;
 		String input = null;
 		OutputStream outputStreamToClient = null;
-		
+
 		try {
 			connection = serverConnection.accept();
 
-			/* create a new FTPConnection on the same server and wait
-			 * for a user to log in */
+			/*
+			 * create a new FTPConnection on the same server and wait for a user to log in
+			 */
 			new FTPConnection(serverConnection);
 
-			inputFromClient = new BufferedReader( new InputStreamReader( connection.getInputStream() ) );
+			inputFromClient = new BufferedReader(new InputStreamReader(connection.getInputStream()));
 			outputStreamToClient = connection.getOutputStream();
-			outputToClient = new DataOutputStream( outputStreamToClient );
+			outputToClient = new DataOutputStream(outputStreamToClient);
 
 			// while the user is not yet authenticated
 			while (true) {
 
 				input = inputFromClient.readLine();
 
-				if(input.startsWith("HELLO")) {
+				if (input.startsWith("HELLO")) {
 
 					// if no username is given close connection
 					if (input.length() < 7) {
@@ -84,13 +101,13 @@ class FTPConnection extends Thread {
 						return;
 					}
 
-
 					username = input.substring(6);
-					startDirectory += currentDirectory + username;
+					currentDirectory += username;
+					currentDirectory += File.separator;
 
 					// check if user is a valid one
-					File tmp = new File(startDirectory);
-					assert(tmp != null);
+					File tmp = new File(startDirectory + currentDirectory);
+					assert (tmp != null);
 
 					if (tmp.exists()) {
 						response = "HELLO OK " + username + "\n";
@@ -106,34 +123,29 @@ class FTPConnection extends Thread {
 						connection.close();
 						return;
 					}
-				}
-				else if (input.equals("BYE"))  {
+				} else if (input.equals("BYE")) {
 					response = "BYE OK\n";
 					outputToClient.writeBytes(response);
 					connection.close();
 					return;
-				}
-				else {
+				} else {
 					outputToClient.writeBytes("ERROR 007\n"); // unknown command, unknown error
 					connection.close();
 					return;
 				}
 			}
-		}
-		catch (IOException e) {
-			System.err.println("Problem in creating ftp connection: " + e.getMessage());
+		} catch (IOException e) {
+			logger.log(Level.SEVERE, "Problem in creating ftp connection: " + e.getMessage(), e);
+			return; // close thread
+		} catch (NullPointerException e) {
+			logger.log(Level.SEVERE, "A user logged off", e);
 			return; // close thread
 		}
-		catch (NullPointerException e) {
-			System.err.println("A user logged off");
-			return; // close thread
-		}
-
 
 		/*********************************************************/
 		/* user is authenticated and can now run now any command */
 		try {
-			while(true) {
+			while (true) {
 
 				// close the connection if the user is idle for 5 minutes
 				connection.setSoTimeout(5 * 1000 * 60);
@@ -144,7 +156,7 @@ class FTPConnection extends Thread {
 					continue;
 
 				// client denotes start of disconnection procedure
-				if (input.equals("BYE"))  {
+				if (input.equals("BYE")) {
 					response = "BYE OK\n";
 					outputToClient.writeBytes(response);
 					connection.close();
@@ -160,9 +172,8 @@ class FTPConnection extends Thread {
 					String[] fileList;
 					try {
 						fileList = current.list();
-						assert fileList != null: "File must exist, user is authetincated";
-					}
-					catch (SecurityException e) {
+						assert fileList != null : "File must exist, user is authetincated";
+					} catch (SecurityException e) {
 						outputToClient.writeBytes("ERROR 110\n");
 						continue;
 					}
@@ -187,7 +198,7 @@ class FTPConnection extends Thread {
 						outputToClient.writeBytes("ERROR 201\n");
 					else {
 						outputToClient.writeBytes("GET OK \n");
-						
+
 						BinaryTransfer.toStream(outputStreamToClient, file);
 					}
 				}
@@ -204,8 +215,7 @@ class FTPConnection extends Thread {
 							outputToClient.writeBytes("DELETE OK " + input + "\n");
 						else
 							throw new SecurityException("cannot delete file");
-					}
-					catch (SecurityException e) {
+					} catch (SecurityException e) {
 						outputToClient.writeBytes("ERROR 202\n");
 					}
 				}
@@ -222,8 +232,7 @@ class FTPConnection extends Thread {
 							outputToClient.writeBytes("MKDIR OK " + input + "\n");
 						else
 							throw new SecurityException("cannot delete file");
-					}
-					catch (SecurityException e) {
+					} catch (SecurityException e) {
 						outputToClient.writeBytes("ERROR 203\n");
 					}
 				}
@@ -246,15 +255,12 @@ class FTPConnection extends Thread {
 						// the canonical file must have length greater or equal than the startDirectory
 						if (file.getCanonicalFile().toString().length() < startDirectory.length()) {
 							outputToClient.writeBytes("ERROR 007\n");
-						}
-						else if (file.isDirectory() && file.exists()) {
+						} else if (file.isDirectory() && file.exists()) {
 							currentDirectory += dirName + "/";
 							outputToClient.writeBytes("CHDIR OK " + dirName + "\n");
-						}
-						else
+						} else
 							throw new SecurityException("file access problems");
-					}
-					catch (SecurityException e) {
+					} catch (SecurityException e) {
 						outputToClient.writeBytes("ERROR 204\n");
 					}
 				}
@@ -264,18 +270,17 @@ class FTPConnection extends Thread {
 					outputToClient.writeBytes("ERROR 007\n");
 				}
 			}
-		}
-		catch (SocketTimeoutException e) {
-			System.err.println("A user was idle for 5 minutes, closed connection");
+		} catch (SocketTimeoutException e) {
+			logger.log(Level.SEVERE, "A user was idle for 5 minutes, closed connection", e);
 			try {
 				connection.close();
 			} catch (IOException e1) {
-				e1.printStackTrace();
+				logger.log(Level.SEVERE, e1.getMessage(), e1);
 			}
+		} catch (IOException e) {
+			logger.log(Level.SEVERE, e.getMessage(), e);
 		}
-		catch (IOException e) {
-			System.err.println(e.getMessage());
-		}
+		
 	}
 
 }
