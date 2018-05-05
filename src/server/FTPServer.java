@@ -53,10 +53,10 @@ class FTPConnection extends Thread {
 	private String username = null;
 
 	// directory of where all the user directories are
-	private String startDirectory = Paths.get("").toAbsolutePath().toString();
+	private String startDirectory = Paths.get("").toAbsolutePath().toString() + File.separator + "bin" + File.separator + "server";
 
 	// the directory where the user currently is, user can only see in his directory
-	private String currentDirectory = File.separator + "bin" + File.separator + "server" + File.separator;
+	private String currentDirectory = File.separator;
 
 	private ServerSocket serverConnection;
 
